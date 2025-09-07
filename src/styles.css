@@ -2,7 +2,7 @@
   --bg: #1e1e2f;
   --panel: #2a2a40;
   --ring: #3c3c55;
-  --accent: #f8d26a; /* dorado */
+  --accent: #f8d26a;
   --good: #4caf50;
   --evil: #f44336;
   --muted: #a9a9c1;
@@ -49,6 +49,10 @@ select {
   border-radius: 10px;
   font-weight: 700;
   cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.btn:hover {
+  transform: scale(1.05);
 }
 .btn.primary {
   background: #4e6bff;
@@ -67,7 +71,6 @@ select {
   border: 1px solid #4e6bff;
   color: #cfd6ff;
 }
-
 .panel {
   background: var(--panel);
   border: 1px solid #3b3d5c;
@@ -76,7 +79,7 @@ select {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
 }
 
-/* MESA CIRCULAR */
+/* Mesa circular */
 .tableWrap {
   position: relative;
   width: 720px;
@@ -100,7 +103,7 @@ select {
   outline: 6px solid var(--ring);
 }
 
-/* Jugadores alrededor del círculo */
+/* Jugadores alrededor */
 .player {
   position: absolute;
   width: 110px;
@@ -115,6 +118,10 @@ select {
   display: inline-block;
   min-width: 90px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease;
+}
+.playerCard:hover {
+  transform: scale(1.05);
 }
 .player .avatar {
   width: 58px;
@@ -163,16 +170,19 @@ select {
   display: grid;
   place-items: center;
   font-size: 18px;
+  transition: all 0.3s ease;
 }
 .chip.good {
   background: rgba(76, 175, 80, 0.15);
   color: #b6ffbe;
   border-color: rgba(76, 175, 80, 0.55);
+  animation: pulseGreen 0.4s ease;
 }
 .chip.evil {
   background: rgba(244, 67, 54, 0.15);
   color: #ffb3ae;
   border-color: rgba(244, 67, 54, 0.55);
+  animation: pulseRed 0.4s ease;
 }
 .kpi {
   display: flex;
@@ -181,7 +191,7 @@ select {
   color: #cfd1ff;
 }
 
-/* Botonera inferior */
+/* Votaciones y badges */
 .actions {
   display: flex;
   gap: 10px;
@@ -189,8 +199,6 @@ select {
   margin-top: 12px;
   flex-wrap: wrap;
 }
-
-/* Votaciones */
 .badge {
   padding: 6px 10px;
   border-radius: 999px;
@@ -198,4 +206,247 @@ select {
   background: #101226;
   color: #d5d7ff;
   border: 1px solid #33365b;
+}
+
+/* Modal */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  animation: fadeIn 0.3s ease-in-out;
+}
+.modal {
+  padding: 30px 60px;
+  border-radius: 20px;
+  font-size: 26px;
+  font-weight: bold;
+  text-align: center;
+  color: #fff;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
+  animation: zoomIn 0.4s ease;
+}
+.modal.success {
+  background: #2ecc71;
+  border: 5px solid #27ae60;
+}
+.modal.fail {
+  background: #e74c3c;
+  border: 5px solid #c0392b;
+}
+.modal .icon {
+  font-size: 60px;
+  margin-bottom: 10px;
+  animation: bounce 0.8s ease;
+}
+
+/* Animaciones */
+@keyframes zoomIn {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes bounce {
+  0% {
+    transform: scale(0.8);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes pulseGreen {
+  from {
+    box-shadow: 0 0 4px #27ae60;
+  }
+  to {
+    box-shadow: 0 0 12px #2ecc71;
+  }
+}
+@keyframes pulseRed {
+  from {
+    box-shadow: 0 0 4px #c0392b;
+  }
+  to {
+    box-shadow: 0 0 12px #e74c3c;
+  }
+}
+
+/* 🌐 Responsividad general */
+@media screen and (max-width: 1024px) {
+  .container {
+    padding: 12px;
+    max-width: 100%;
+  }
+
+  .panel {
+    padding: 12px;
+  }
+
+  .tableWrap {
+    width: 600px;
+    height: 600px;
+  }
+
+  .tableDisk {
+    width: 460px;
+    height: 460px;
+  }
+
+  .centerHUD {
+    width: 340px;
+    height: 340px;
+  }
+
+  .player {
+    transform-origin: 50% 280px;
+  }
+}
+
+/* 📱 Tablets y móviles grandes */
+@media screen and (max-width: 768px) {
+  .tableWrap {
+    width: 480px;
+    height: 480px;
+  }
+
+  .tableDisk {
+    width: 380px;
+    height: 380px;
+    border-width: 8px;
+  }
+
+  .centerHUD {
+    width: 280px;
+    height: 280px;
+  }
+
+  .player {
+    width: 80px;
+    transform-origin: 50% 220px;
+  }
+
+  .playerCard {
+    padding: 6px;
+    border-radius: 10px;
+    min-width: 70px;
+  }
+
+  .avatar {
+    width: 46px;
+    height: 46px;
+    font-size: 14px;
+  }
+
+  .btn {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .input {
+    width: 100%;
+  }
+
+  .row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* 📱 Móviles pequeños */
+@media screen and (max-width: 480px) {
+  .tableWrap {
+    width: 340px;
+    height: 340px;
+  }
+
+  .tableDisk {
+    width: 280px;
+    height: 280px;
+    border-width: 6px;
+  }
+
+  .centerHUD {
+    width: 200px;
+    height: 200px;
+    font-size: 12px;
+  }
+
+  .chips {
+    gap: 4px;
+  }
+
+  .chip {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .player {
+    width: 65px;
+    transform-origin: 50% 160px;
+  }
+
+  .playerCard {
+    padding: 4px;
+    border-radius: 8px;
+    min-width: 55px;
+  }
+
+  .avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 12px;
+  }
+
+  .btn {
+    padding: 6px 8px;
+    font-size: 12px;
+    width: 100%;
+  }
+
+  .kpi {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .actions {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .badge {
+    font-size: 11px;
+    padding: 4px 6px;
+  }
+
+  .modal {
+    padding: 20px 30px;
+    font-size: 20px;
+  }
+
+  .modal .icon {
+    font-size: 40px;
+  }
 }

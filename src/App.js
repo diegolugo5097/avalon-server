@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { io } from "socket.io-client";
 import "./styles.css";
 
-// ⚠️ Cambia por tu URL de Render:
 const socket = io("https://avalon-serve.onrender.com", {
   transports: ["websocket"],
 });
@@ -13,18 +12,6 @@ export default function App() {
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState("");
   const [assassinCount, setAssassinCount] = useState(2);
-
-  // 📌 Calcular jugadores requeridos para la misión
-  const missionTeamSizes = {
-    5: [2, 3, 2, 3, 3],
-    6: [2, 3, 4, 3, 4],
-    7: [2, 3, 3, 4, 4],
-    8: [3, 4, 4, 5, 5],
-    9: [3, 4, 4, 5, 5],
-    10: [3, 4, 4, 5, 5],
-  };
-  const requiredTeamSize =
-    missionTeamSizes[state.players.length]?.[state.round - 1] || 2;
 
   // Estado del servidor
   const [state, setState] = useState({
@@ -40,28 +27,52 @@ export default function App() {
     players: [],
   });
 
-  // Rol privado
   const [myRole, setMyRole] = useState(null);
-  const myId = socket.id;
+  const [showMissionResult, setShowMissionResult] = useState(false);
+  const [lastMissionResult, setLastMissionResult] = useState(null);
+  const [prevResultsLength, setPrevResultsLength] = useState(0);
+
+  // Sonido de inicio de votación
+  useEffect(() => {
+    socket.on("teamVoteStart", () => {
+      const sound = new Audio("/sounds/notify.mp3");
+      sound.play().catch(() => {});
+    });
+  }, []);
 
   useEffect(() => {
-    socket.on("connect", () => {
-      // noop
-    });
+    socket.on("connect", () => {});
     socket.on("state", (s) => setState(s));
     socket.on("yourRole", (role) => setMyRole(role));
-    socket.on("toast", ({ type, msg }) => alert(msg));
-    socket.on("roundResolved", (r) => {
-      // podrías mostrar una modal si quieres
-      console.log("Ronda resuelta:", r);
-    });
+    socket.on("toast", ({ msg }) => alert(msg));
+
     return () => {
       socket.off("state");
       socket.off("yourRole");
       socket.off("toast");
-      socket.off("roundResolved");
     };
   }, []);
+
+  // Modal resultado misión
+  useEffect(() => {
+    if (state.results.length > prevResultsLength) {
+      const last = state.results[state.results.length - 1];
+      if (last) {
+        setLastMissionResult(last.winner === "Buenos" ? "success" : "fail");
+        setShowMissionResult(true);
+
+        const sound = new Audio(
+          last.winner === "Buenos" ? "/sounds/success.mp3" : "/sounds/fail.mp3"
+        );
+        sound.play().catch(() => {});
+
+        setTimeout(() => {
+          setShowMissionResult(false);
+        }, 2500);
+      }
+      setPrevResultsLength(state.results.length);
+    }
+  }, [state.results, prevResultsLength]);
 
   // Unirse al lobby
   const join = () => {
@@ -79,21 +90,40 @@ export default function App() {
   // Selección de equipo
   const toggleTeam = (id) => {
     if (state.phase !== "teamSelection") return;
+    if (state.leaderId !== socket.id) return;
     const next = state.team.includes(id)
       ? state.team.filter((x) => x !== id)
       : [...state.team, id];
-    socket.emit("selectTeam", { room, team: next });
+    socket.emit("draftTeam", { room, team: next });
   };
 
-  // Votos
-  const voteTeam = (vote) => socket.emit("voteTeam", { room, vote }); // "Sí" | "No"
-  const voteMission = (vote) => socket.emit("voteMission", { room, vote }); // "Éxito" | "Fracaso"
+  const confirmTeam = () => {
+    socket.emit("selectTeam", { room, team: state.team });
+  };
+
+  // Votar equipo
+  const voteTeam = (vote) => socket.emit("voteTeam", { room, vote });
+
+  // Votar misión
+  const voteMission = (vote) => socket.emit("voteMission", { room, vote });
 
   const iAmLeader = state.leaderId === socket.id;
   const gameOver =
     state.assassinWins >= 3 || state.goodWins >= 3 || state.round > 5;
 
-  // Orden circular de jugadores
+  // Tamaño requerido según reglas
+  const missionTeamSizes = {
+    5: [2, 3, 2, 3, 3],
+    6: [2, 3, 4, 3, 4],
+    7: [2, 3, 3, 4, 4],
+    8: [3, 4, 4, 5, 5],
+    9: [3, 4, 4, 5, 5],
+    10: [3, 4, 4, 5, 5],
+  };
+  const requiredTeamSize =
+    missionTeamSizes[state.players.length]?.[state.round - 1] || 2;
+
+  // Posicionar jugadores en círculo
   const circlePlayers = useMemo(() => {
     const arr = state.players || [];
     const n = Math.max(arr.length, 1);
@@ -105,7 +135,27 @@ export default function App() {
 
   return (
     <div className="container">
-      {/* LOBBY */}
+      {/* Modal resultado misión */}
+      {showMissionResult && (
+        <div className="modal-backdrop">
+          <div
+            className={`modal ${
+              lastMissionResult === "success" ? "success" : "fail"
+            }`}
+          >
+            <div className="icon">
+              {lastMissionResult === "success" ? "✅" : "❌"}
+            </div>
+            <h2>
+              {lastMissionResult === "success"
+                ? "¡Misión Exitosa!"
+                : "¡Misión Fallida!"}
+            </h2>
+          </div>
+        </div>
+      )}
+
+      {/* Lobby */}
       {state.phase === "lobby" && (
         <div className="panel">
           <h2>Ávalon — Lobby</h2>
@@ -160,14 +210,14 @@ export default function App() {
         </div>
       )}
 
-      {/* MESA */}
+      {/* Mesa */}
       {state.phase !== "lobby" && (
         <>
           <div className="tableWrap panel">
             <div className="tableDisk" />
 
-            {/* Jugadores alrededor */}
-            {circlePlayers.map((p, idx) => (
+            {/* Jugadores */}
+            {circlePlayers.map((p) => (
               <div
                 key={p.id}
                 className={`player ${p.id === state.leaderId ? "leader" : ""}`}
@@ -190,7 +240,6 @@ export default function App() {
                       display: "flex",
                       gap: 6,
                       justifyContent: "center",
-                      alignItems: "center",
                     }}
                   >
                     {p.id === state.leaderId && (
@@ -206,8 +255,6 @@ export default function App() {
                       {p.name}
                     </span>
                   </div>
-
-                  {/* Botón para añadir/remover del equipo si soy líder y estamos en selección */}
                   {iAmLeader && state.phase === "teamSelection" && (
                     <div style={{ marginTop: 6 }}>
                       <button
@@ -230,6 +277,9 @@ export default function App() {
                 <span className="badge">
                   Ronda {Math.min(state.round, 5)} / 5
                 </span>
+                <span className="badge">
+                  Jugadores requeridos: {requiredTeamSize}
+                </span>
                 <span className="badge">Buenos: {state.goodWins}</span>
                 <span className="badge">Asesinos: {state.assassinWins}</span>
               </div>
@@ -250,7 +300,7 @@ export default function App() {
                 })}
               </div>
 
-              {/* Acciones por fase */}
+              {/* Fase de selección de equipo */}
               {state.phase === "teamSelection" && (
                 <div className="actions">
                   {iAmLeader ? (
@@ -261,9 +311,7 @@ export default function App() {
                       <button
                         className="btn primary"
                         disabled={state.team.length !== requiredTeamSize}
-                        onClick={() =>
-                          socket.emit("selectTeam", { room, team: state.team })
-                        }
+                        onClick={confirmTeam}
                       >
                         Confirmar equipo ({state.team.length}/{requiredTeamSize}
                         )
@@ -275,23 +323,29 @@ export default function App() {
                 </div>
               )}
 
+              {/* Fase de votación de equipo */}
               {state.phase === "teamVote" && (
                 <div className="actions">
-                  <button className="btn good" onClick={() => voteTeam("Sí")}>
-                    👍 Aprobado
+                  <span className="badge">¿Apruebas este equipo?</span>
+                  <button
+                    className="btn good"
+                    onClick={() => voteTeam("Aprobar")}
+                  >
+                    👍 Aprobar
                   </button>
-                  <button className="btn evil" onClick={() => voteTeam("No")}>
-                    👎 Rechazado
+                  <button
+                    className="btn evil"
+                    onClick={() => voteTeam("Rechazar")}
+                  >
+                    👎 Rechazar
                   </button>
                   <span className="badge">
                     Votos: {state.teamVotes.length}/{state.players.length}
                   </span>
-                  <span className="badge">
-                    Regla: 1 rechazo ⇒ gana Asesinos la ronda
-                  </span>
                 </div>
               )}
 
+              {/* Fase de votación de misión */}
               {state.phase === "missionVote" &&
                 state.team.includes(socket.id) && (
                   <div className="actions">
@@ -314,6 +368,7 @@ export default function App() {
                     </span>
                   </div>
                 )}
+
               {state.phase === "missionVote" &&
                 !state.team.includes(socket.id) && (
                   <div className="actions">
