@@ -14,6 +14,18 @@ export default function App() {
   const [avatar, setAvatar] = useState("");
   const [assassinCount, setAssassinCount] = useState(2);
 
+  // 📌 Calcular jugadores requeridos para la misión
+  const missionTeamSizes = {
+    5: [2, 3, 2, 3, 3],
+    6: [2, 3, 4, 3, 4],
+    7: [2, 3, 3, 4, 4],
+    8: [3, 4, 4, 5, 5],
+    9: [3, 4, 4, 5, 5],
+    10: [3, 4, 4, 5, 5],
+  };
+  const requiredTeamSize =
+    missionTeamSizes[state.players.length]?.[state.round - 1] || 2;
+
   // Estado del servidor
   const [state, setState] = useState({
     phase: "lobby",
@@ -244,15 +256,17 @@ export default function App() {
                   {iAmLeader ? (
                     <>
                       <span className="badge">
-                        Selecciona miembros y confirma
+                        Debes elegir exactamente {requiredTeamSize} jugadores
                       </span>
                       <button
                         className="btn primary"
+                        disabled={state.team.length !== requiredTeamSize}
                         onClick={() =>
                           socket.emit("selectTeam", { room, team: state.team })
                         }
                       >
-                        Confirmar equipo ({state.team.length})
+                        Confirmar equipo ({state.team.length}/{requiredTeamSize}
+                        )
                       </button>
                     </>
                   ) : (
@@ -281,6 +295,7 @@ export default function App() {
               {state.phase === "missionVote" &&
                 state.team.includes(socket.id) && (
                   <div className="actions">
+                    <span className="badge">Tu voto para la misión</span>
                     <button
                       className="btn good"
                       onClick={() => voteMission("Éxito")}
@@ -303,7 +318,7 @@ export default function App() {
                 !state.team.includes(socket.id) && (
                   <div className="actions">
                     <span className="badge">
-                      Solo el equipo vota la misión…
+                      No formas parte de esta misión…
                     </span>
                   </div>
                 )}
