@@ -264,10 +264,10 @@ export default function App() {
               {state.phase === "teamVote" && (
                 <div className="actions">
                   <button className="btn good" onClick={() => voteTeam("Sí")}>
-                    👍 Sí
+                    👍 Aprobado
                   </button>
                   <button className="btn evil" onClick={() => voteTeam("No")}>
-                    👎 No
+                    👎 Rechazado
                   </button>
                   <span className="badge">
                     Votos: {state.teamVotes.length}/{state.players.length}
