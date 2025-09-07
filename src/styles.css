@@ -1,0 +1,46 @@
+body {
+  font-family: "Arial", sans-serif;
+  background: #1e1e2f;
+  color: #f0f0f0;
+  margin: 0;
+  padding: 0;
+}
+button {
+  padding: 8px 16px;
+  margin: 4px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+button:hover {
+  opacity: 0.9;
+}
+.success {
+  background: #4caf50;
+  color: #fff;
+}
+.danger {
+  background: #f44336;
+  color: #fff;
+}
+.primary {
+  background: #2196f3;
+  color: #fff;
+}
+.container {
+  padding: 20px;
+  max-width: 600px;
+  margin: auto;
+}
+h2,
+h3 {
+  text-align: center;
+}
+ul {
+  list-style: none;
+  padding: 0;
+}
+li {
+  padding: 6px 0;
+}
