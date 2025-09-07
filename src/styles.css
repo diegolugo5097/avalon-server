@@ -1,46 +1,201 @@
+:root {
+  --bg: #1e1e2f;
+  --panel: #2a2a40;
+  --ring: #3c3c55;
+  --accent: #f8d26a; /* dorado */
+  --good: #4caf50;
+  --evil: #f44336;
+  --muted: #a9a9c1;
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
+}
 body {
-  font-family: "Arial", sans-serif;
-  background: #1e1e2f;
-  color: #f0f0f0;
   margin: 0;
-  padding: 0;
-}
-button {
-  padding: 8px 16px;
-  margin: 4px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: bold;
-}
-button:hover {
-  opacity: 0.9;
-}
-.success {
-  background: #4caf50;
+  background: var(--bg);
   color: #fff;
+  font-family: system-ui, Arial, sans-serif;
 }
-.danger {
-  background: #f44336;
-  color: #fff;
-}
-.primary {
-  background: #2196f3;
-  color: #fff;
-}
+
 .container {
+  max-width: 1100px;
+  margin: 0 auto;
   padding: 20px;
-  max-width: 600px;
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.input,
+select {
+  background: #111323;
+  color: #fff;
+  border: 1px solid #343654;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.btn {
+  border: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn.primary {
+  background: #4e6bff;
+  color: #fff;
+}
+.btn.good {
+  background: var(--good);
+  color: #fff;
+}
+.btn.evil {
+  background: var(--evil);
+  color: #fff;
+}
+.btn.ghost {
+  background: #0000;
+  border: 1px solid #4e6bff;
+  color: #cfd6ff;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid #3b3d5c;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+/* MESA CIRCULAR */
+.tableWrap {
+  position: relative;
+  width: 720px;
+  height: 720px;
+  margin: 24px auto;
+}
+.tableDisk {
+  position: absolute;
+  inset: 0;
   margin: auto;
+  width: 560px;
+  height: 560px;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    #2b2b3f 0%,
+    #232336 60%,
+    #1b1b2a 100%
+  );
+  border: 12px solid #2c2c3c;
+  outline: 6px solid var(--ring);
 }
-h2,
-h3 {
+
+/* Jugadores alrededor del círculo */
+.player {
+  position: absolute;
+  width: 110px;
   text-align: center;
+  transform-origin: 50% 340px;
 }
-ul {
-  list-style: none;
-  padding: 0;
+.playerCard {
+  background: #20223a;
+  border: 1px solid #343654;
+  border-radius: 14px;
+  padding: 8px;
+  display: inline-block;
+  min-width: 90px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
 }
-li {
-  padding: 6px 0;
+.player .avatar {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: #0f1124;
+  border: 3px solid #4e4f6d;
+  margin: 0 auto 6px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 18px;
+  color: #ddd;
+}
+.player.leader .avatar {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(248, 210, 106, 0.2);
+}
+.player.leader .crown {
+  color: var(--accent);
+  font-size: 20px;
+}
+
+/* Centro: ronda e historial */
+.centerHUD {
+  position: absolute;
+  inset: 0;
+  width: 420px;
+  height: 420px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.chips {
+  display: flex;
+  gap: 8px;
+}
+.chip {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #373955;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+}
+.chip.good {
+  background: rgba(76, 175, 80, 0.15);
+  color: #b6ffbe;
+  border-color: rgba(76, 175, 80, 0.55);
+}
+.chip.evil {
+  background: rgba(244, 67, 54, 0.15);
+  color: #ffb3ae;
+  border-color: rgba(244, 67, 54, 0.55);
+}
+.kpi {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: #cfd1ff;
+}
+
+/* Botonera inferior */
+.actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+/* Votaciones */
+.badge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: #101226;
+  color: #d5d7ff;
+  border: 1px solid #33365b;
 }

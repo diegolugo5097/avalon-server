@@ -1,179 +1,347 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { io } from "socket.io-client";
 import "./styles.css";
 
-const socket = io("https://TU_SERVIDOR_DE_SOCKETS"); // Reemplaza
+// ⚠️ Cambia por tu URL de Render:
+const socket = io("https://avalon-serve.onrender.com", {
+  transports: ["websocket"],
+});
 
-function App() {
+export default function App() {
+  // Lobby
+  const [room, setRoom] = useState("sala-1");
   const [name, setName] = useState("");
-  const [room, setRoom] = useState("default");
-  const [players, setPlayers] = useState([]);
-  const [phase, setPhase] = useState("lobby");
-  const [roles, setRoles] = useState({});
-  const [leaderId, setLeaderId] = useState(null);
-  const [team, setTeam] = useState([]);
-  const [teamVotes, setTeamVotes] = useState([]);
-  const [missionVotes, setMissionVotes] = useState([]);
-  const [results, setResults] = useState([]);
-  const [gameOver, setGameOver] = useState(false);
-  const [showRole, setShowRole] = useState(false);
+  const [avatar, setAvatar] = useState("");
+  const [assassinCount, setAssassinCount] = useState(2);
+
+  // Estado del servidor
+  const [state, setState] = useState({
+    phase: "lobby",
+    leaderId: null,
+    round: 1,
+    results: [],
+    goodWins: 0,
+    assassinWins: 0,
+    team: [],
+    teamVotes: [],
+    missionVotes: [],
+    players: [],
+  });
+
+  // Rol privado
+  const [myRole, setMyRole] = useState(null);
+  const myId = socket.id;
 
   useEffect(() => {
-    socket.on("updatePlayers", setPlayers);
-    socket.on("gameStarted", ({ phase, leaderId, roles }) => {
-      setPhase(phase);
-      setLeaderId(leaderId);
-      setRoles(roles);
+    socket.on("connect", () => {
+      // noop
     });
-    socket.on("teamSelected", ({ phase, team }) => {
-      setPhase(phase);
-      setTeam(team);
+    socket.on("state", (s) => setState(s));
+    socket.on("yourRole", (role) => setMyRole(role));
+    socket.on("toast", ({ type, msg }) => alert(msg));
+    socket.on("roundResolved", (r) => {
+      // podrías mostrar una modal si quieres
+      console.log("Ronda resuelta:", r);
     });
-    socket.on("teamVoteResult", ({ phase, leaderId }) => {
-      setPhase(phase);
-      setLeaderId(leaderId);
-    });
-    socket.on("updateTeamVotes", setTeamVotes);
-    socket.on("updateMissionVotes", setMissionVotes);
-    socket.on("missionResult", ({ results, gameOver }) => {
-      setResults(results);
-      setGameOver(gameOver);
-    });
-    socket.on("nextRound", ({ phase, leaderId }) => {
-      setPhase(phase);
-      setLeaderId(leaderId);
-      setTeam([]);
-      setTeamVotes([]);
-      setMissionVotes([]);
-    });
+    return () => {
+      socket.off("state");
+      socket.off("yourRole");
+      socket.off("toast");
+      socket.off("roundResolved");
+    };
   }, []);
 
-  const joinRoom = () => {
-    if (name) socket.emit("joinRoom", { name, room });
+  // Unirse al lobby
+  const join = () => {
+    if (!name) return alert("Escribe un nombre");
+    socket.emit("joinRoom", { name, room, avatar });
   };
-  const startGame = () => socket.emit("startGame", { room });
-  const selectTeam = (playerId) =>
-    setTeam((prev) =>
-      prev.includes(playerId)
-        ? prev.filter((p) => p !== playerId)
-        : [...prev, playerId]
-    );
-  const confirmTeam = () => socket.emit("selectTeam", { room, team });
-  const voteTeam = (vote) =>
-    socket.emit("voteTeam", { room, playerId: socket.id, vote });
-  const voteMission = (vote) =>
-    socket.emit("voteMission", { room, playerId: socket.id, vote });
 
-  if (gameOver)
-    return (
-      <div className="container">
-        <h2>🏆 Juego terminado</h2>
-        <p
-          className={
-            results.filter((r) => r.success).length >= 3 ? "success" : "danger"
-          }
-        >
-          {results.filter((r) => r.success).length >= 3
-            ? "✅ Los Buenos ganan!"
-            : "❌ Los Malos ganan!"}
-        </p>
-        <ul>
-          {results.map((r) => (
-            <li key={r.round}>
-              Ronda {r.round}: {r.success ? "✅ Éxito" : "❌ Fracaso"}
-            </li>
-          ))}
-        </ul>
-        <button className="primary" onClick={() => window.location.reload()}>
-          Reiniciar
-        </button>
-      </div>
-    );
+  // Iniciar juego
+  const start = () =>
+    socket.emit("startGame", {
+      room,
+      assassinCount: Number(assassinCount || 1),
+    });
+
+  // Selección de equipo
+  const toggleTeam = (id) => {
+    if (state.phase !== "teamSelection") return;
+    const next = state.team.includes(id)
+      ? state.team.filter((x) => x !== id)
+      : [...state.team, id];
+    socket.emit("selectTeam", { room, team: next });
+  };
+
+  // Votos
+  const voteTeam = (vote) => socket.emit("voteTeam", { room, vote }); // "Sí" | "No"
+  const voteMission = (vote) => socket.emit("voteMission", { room, vote }); // "Éxito" | "Fracaso"
+
+  const iAmLeader = state.leaderId === socket.id;
+  const gameOver =
+    state.assassinWins >= 3 || state.goodWins >= 3 || state.round > 5;
+
+  // Orden circular de jugadores
+  const circlePlayers = useMemo(() => {
+    const arr = state.players || [];
+    const n = Math.max(arr.length, 1);
+    return arr.map((p, i) => {
+      const angle = (360 / n) * i;
+      return { ...p, angle };
+    });
+  }, [state.players]);
 
   return (
     <div className="container">
-      {phase === "lobby" && (
-        <>
-          <h2>Lobby</h2>
-          <input
-            placeholder="Tu nombre"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <button className="primary" onClick={joinRoom}>
-            Unirse
-          </button>
-          <button className="success" onClick={startGame}>
-            Iniciar partida
-          </button>
-          <h3>Jugadores:</h3>
-          <ul>
-            {players.map((p) => (
-              <li key={p.id}>{p.name}</li>
+      {/* LOBBY */}
+      {state.phase === "lobby" && (
+        <div className="panel">
+          <h2>Ávalon — Lobby</h2>
+          <div className="row">
+            <input
+              className="input"
+              placeholder="Tu nombre"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <input
+              className="input"
+              placeholder="Avatar (emoji opcional)"
+              value={avatar}
+              onChange={(e) => setAvatar(e.target.value)}
+            />
+            <input
+              className="input"
+              value={room}
+              onChange={(e) => setRoom(e.target.value)}
+              placeholder="Sala"
+            />
+            <button className="btn primary" onClick={join}>
+              Unirme
+            </button>
+          </div>
+
+          <div style={{ height: 8 }} />
+          <div className="row">
+            <label className="badge">Asesinos:</label>
+            <input
+              className="input"
+              type="number"
+              min={1}
+              max={Math.max(1, (state.players?.length || 2) - 1)}
+              value={assassinCount}
+              onChange={(e) => setAssassinCount(e.target.value)}
+            />
+            <button className="btn good" onClick={start}>
+              Iniciar partida
+            </button>
+          </div>
+
+          <h3>Jugadores ({state.players.length})</h3>
+          <div className="row">
+            {state.players.map((p) => (
+              <span key={p.id} className="badge">
+                {p.name}
+              </span>
             ))}
-          </ul>
-        </>
+          </div>
+        </div>
       )}
-      {phase !== "lobby" && (
+
+      {/* MESA */}
+      {state.phase !== "lobby" && (
         <>
-          <h3>Líder: {leaderId}</h3>
-          <button className="primary" onClick={() => setShowRole(!showRole)}>
-            👁️ Ver rol
-          </button>
-          {showRole && <p>Tu rol: {roles[socket.id]}</p>}
-          {phase === "teamSelection" && (
-            <div>
-              <h3>Selecciona equipo</h3>
-              <ul>
-                {players.map((p) => (
-                  <li key={p.id}>
-                    {p.name}{" "}
-                    <button
-                      className="primary"
-                      onClick={() => selectTeam(p.id)}
+          <div className="tableWrap panel">
+            <div className="tableDisk" />
+
+            {/* Jugadores alrededor */}
+            {circlePlayers.map((p, idx) => (
+              <div
+                key={p.id}
+                className={`player ${p.id === state.leaderId ? "leader" : ""}`}
+                style={{
+                  left: 305,
+                  top: 305,
+                  transform: `rotate(${
+                    p.angle
+                  }deg) translateY(-340px) rotate(${-p.angle}deg)`,
+                }}
+              >
+                <div className="playerCard">
+                  <div className="avatar">
+                    {p.avatar
+                      ? p.avatar
+                      : (p.name || "?").slice(0, 2).toUpperCase()}
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 6,
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
+                    {p.id === state.leaderId && (
+                      <span className="crown">👑</span>
+                    )}
+                    <span
+                      style={{
+                        color: "#e3e6ff",
+                        fontWeight: 700,
+                        fontSize: 14,
+                      }}
                     >
-                      {team.includes(p.id) ? "❌" : "✅"}
+                      {p.name}
+                    </span>
+                  </div>
+
+                  {/* Botón para añadir/remover del equipo si soy líder y estamos en selección */}
+                  {iAmLeader && state.phase === "teamSelection" && (
+                    <div style={{ marginTop: 6 }}>
+                      <button
+                        className={`btn ${
+                          state.team.includes(p.id) ? "evil" : "ghost"
+                        }`}
+                        onClick={() => toggleTeam(p.id)}
+                      >
+                        {state.team.includes(p.id) ? "Quitar" : "Añadir"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {/* HUD central */}
+            <div className="centerHUD">
+              <div className="kpi">
+                <span className="badge">
+                  Ronda {Math.min(state.round, 5)} / 5
+                </span>
+                <span className="badge">Buenos: {state.goodWins}</span>
+                <span className="badge">Asesinos: {state.assassinWins}</span>
+              </div>
+
+              <div className="chips">
+                {[...Array(5)].map((_, i) => {
+                  const res = state.results.find((r) => r.round === i + 1);
+                  return (
+                    <div
+                      key={i}
+                      className={`chip ${
+                        res ? (res.winner === "Buenos" ? "good" : "evil") : ""
+                      }`}
+                    >
+                      {res ? (res.winner === "Buenos" ? "✓" : "✗") : i + 1}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Acciones por fase */}
+              {state.phase === "teamSelection" && (
+                <div className="actions">
+                  {iAmLeader ? (
+                    <>
+                      <span className="badge">
+                        Selecciona miembros y confirma
+                      </span>
+                      <button
+                        className="btn primary"
+                        onClick={() =>
+                          socket.emit("selectTeam", { room, team: state.team })
+                        }
+                      >
+                        Confirmar equipo ({state.team.length})
+                      </button>
+                    </>
+                  ) : (
+                    <span className="badge">Esperando al líder…</span>
+                  )}
+                </div>
+              )}
+
+              {state.phase === "teamVote" && (
+                <div className="actions">
+                  <button className="btn good" onClick={() => voteTeam("Sí")}>
+                    👍 Sí
+                  </button>
+                  <button className="btn evil" onClick={() => voteTeam("No")}>
+                    👎 No
+                  </button>
+                  <span className="badge">
+                    Votos: {state.teamVotes.length}/{state.players.length}
+                  </span>
+                  <span className="badge">
+                    Regla: 1 rechazo ⇒ gana Asesinos la ronda
+                  </span>
+                </div>
+              )}
+
+              {state.phase === "missionVote" &&
+                state.team.includes(socket.id) && (
+                  <div className="actions">
+                    <button
+                      className="btn good"
+                      onClick={() => voteMission("Éxito")}
+                    >
+                      ✅ Éxito
                     </button>
-                  </li>
-                ))}
-              </ul>
-              <button className="success" onClick={confirmTeam}>
-                Confirmar equipo
-              </button>
+                    <button
+                      className="btn evil"
+                      onClick={() => voteMission("Fracaso")}
+                    >
+                      ❌ Fracaso
+                    </button>
+                    <span className="badge">
+                      Votos misión: {state.missionVotes.length}/
+                      {state.team.length}
+                    </span>
+                  </div>
+                )}
+              {state.phase === "missionVote" &&
+                !state.team.includes(socket.id) && (
+                  <div className="actions">
+                    <span className="badge">
+                      Solo el equipo vota la misión…
+                    </span>
+                  </div>
+                )}
             </div>
-          )}
-          {phase === "teamVote" && (
-            <div>
-              <h3>Vota el equipo propuesto</h3>
-              <button className="success" onClick={() => voteTeam("Sí")}>
-                👍 Sí
-              </button>
-              <button className="danger" onClick={() => voteTeam("No")}>
-                👎 No
-              </button>
-              <p>
-                Votos: {teamVotes.length}/{players.length}
-              </p>
+          </div>
+
+          {/* Barra inferior */}
+          <div
+            className="panel row"
+            style={{ justifyContent: "space-between" }}
+          >
+            <div className="row">
+              <span className="badge">Sala: {room}</span>
+              <span className="badge">
+                Líder:{" "}
+                {state.players.find((p) => p.id === state.leaderId)?.name ||
+                  "?"}
+              </span>
             </div>
-          )}
-          {phase === "missionVote" && team.includes(socket.id) && (
-            <div>
-              <h3>Vota la misión</h3>
-              <button className="success" onClick={() => voteMission("Éxito")}>
-                ✅ Éxito
+            <div className="row">
+              <button
+                className="btn ghost"
+                onClick={() => alert(`Tu rol es: ${myRole || "?"}`)}
+              >
+                👁️ Ver mi rol
               </button>
-              <button className="danger" onClick={() => voteMission("Fracaso")}>
-                ❌ Fracaso
-              </button>
-              <p>
-                Votos de misión: {missionVotes.length}/{team.length}
-              </p>
+              {gameOver && (
+                <button
+                  className="btn primary"
+                  onClick={() => window.location.reload()}
+                >
+                  Reiniciar
+                </button>
+              )}
             </div>
-          )}
+          </div>
         </>
       )}
     </div>
   );
 }
-
-export default App;
