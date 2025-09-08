@@ -6,8 +6,16 @@
   --good: #4caf50;
   --evil: #f44336;
   --muted: #a9a9c1;
+
+  /* 📐 Tamaños fluidos para la mesa */
+  --table: clamp(320px, 85vw, 720px); /* tamaño del wrapper */
+  --disk: calc(var(--table) - 160px); /* tamaño del disco central */
+  --radius: calc(
+    var(--table) / 2 - 20px
+  ); /* radio donde orbitan las tarjetas */
 }
 
+/* Reset */
 * {
   box-sizing: border-box;
 }
@@ -49,10 +57,14 @@ select {
   border-radius: 10px;
   font-weight: 700;
   cursor: pointer;
-  transition: transform 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .btn:hover {
   transform: scale(1.05);
+}
+.btn:focus-visible {
+  outline: 2px solid #8ea1ff;
+  outline-offset: 2px;
 }
 .btn.primary {
   background: #4e6bff;
@@ -79,19 +91,19 @@ select {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
 }
 
-/* Mesa circular */
+/* 🟢 Mesa circular fluida (menos media queries, mismos resultados) */
 .tableWrap {
   position: relative;
-  width: 720px;
-  height: 720px;
+  width: var(--table);
+  height: var(--table);
   margin: 24px auto;
 }
 .tableDisk {
   position: absolute;
   inset: 0;
   margin: auto;
-  width: 560px;
-  height: 560px;
+  width: var(--disk);
+  height: var(--disk);
   border-radius: 50%;
   background: radial-gradient(
     ellipse at center,
@@ -103,12 +115,13 @@ select {
   outline: 6px solid var(--ring);
 }
 
-/* Jugadores alrededor */
+/* 👥 Jugadores alrededor (se anclan al radio variable) */
 .player {
   position: absolute;
   width: 110px;
   text-align: center;
-  transform-origin: 50% 340px;
+  /* el “brazo” donde rota la tarjeta depende del radio calculado */
+  transform-origin: 50% var(--radius);
 }
 .playerCard {
   background: #20223a;
@@ -117,6 +130,7 @@ select {
   padding: 8px;
   display: inline-block;
   min-width: 90px;
+  max-width: 120px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
   transition: transform 0.2s ease;
 }
@@ -145,22 +159,25 @@ select {
   font-size: 20px;
 }
 
-/* Centro: ronda e historial */
+/* 🧠 Centro: ronda e historial */
 .centerHUD {
   position: absolute;
   inset: 0;
-  width: 420px;
-  height: 420px;
+  width: min(420px, 60%);
+  height: min(420px, 60%);
   margin: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 12px;
+  text-align: center;
 }
 .chips {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 .chip {
   width: 36px;
@@ -189,6 +206,8 @@ select {
   gap: 10px;
   align-items: center;
   color: #cfd1ff;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 /* Votaciones y badges */
@@ -206,6 +225,15 @@ select {
   background: #101226;
   color: #d5d7ff;
   border: 1px solid #33365b;
+}
+
+/* 🪄 Utilidad para truncar (opcional: añade className="truncate" al nombre) */
+.truncate {
+  max-width: 110px;
+  display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Modal */
@@ -293,149 +321,81 @@ select {
   }
 }
 
-/* 🌐 Responsividad general */
-@media screen and (max-width: 1024px) {
+/* 📱 Responsivo general */
+@media (max-width: 1024px) {
   .container {
     padding: 12px;
     max-width: 100%;
   }
-
   .panel {
     padding: 12px;
   }
-
-  .tableWrap {
-    width: 600px;
-    height: 600px;
-  }
-
-  .tableDisk {
-    width: 460px;
-    height: 460px;
-  }
-
-  .centerHUD {
-    width: 340px;
-    height: 340px;
-  }
-
   .player {
-    transform-origin: 50% 280px;
+    width: 90px;
+  }
+  .playerCard {
+    padding: 6px;
+    min-width: 75px;
+  }
+  .player .avatar {
+    width: 48px;
+    height: 48px;
+    font-size: 14px;
   }
 }
 
-/* 📱 Tablets y móviles grandes */
-@media screen and (max-width: 768px) {
-  .tableWrap {
-    width: 480px;
-    height: 480px;
-  }
-
-  .tableDisk {
-    width: 380px;
-    height: 380px;
-    border-width: 8px;
-  }
-
-  .centerHUD {
-    width: 280px;
-    height: 280px;
-  }
-
-  .player {
-    width: 80px;
-    transform-origin: 50% 220px;
-  }
-
-  .playerCard {
-    padding: 6px;
-    border-radius: 10px;
-    min-width: 70px;
-  }
-
-  .avatar {
-    width: 46px;
-    height: 46px;
-    font-size: 14px;
-  }
-
+@media (max-width: 768px) {
   .btn {
     padding: 8px 10px;
     font-size: 13px;
   }
-
   .input {
     width: 100%;
   }
-
   .row {
     flex-direction: column;
     align-items: stretch;
   }
-}
-
-/* 📱 Móviles pequeños */
-@media screen and (max-width: 480px) {
-  .tableWrap {
-    width: 340px;
-    height: 340px;
-  }
-
-  .tableDisk {
-    width: 280px;
-    height: 280px;
-    border-width: 6px;
-  }
-
-  .centerHUD {
-    width: 200px;
-    height: 200px;
-    font-size: 12px;
-  }
-
-  .chips {
-    gap: 4px;
-  }
-
-  .chip {
-    width: 28px;
-    height: 28px;
-    font-size: 12px;
-  }
 
   .player {
-    width: 65px;
-    transform-origin: 50% 160px;
+    width: 70px;
   }
-
   .playerCard {
     padding: 4px;
+    min-width: 60px;
     border-radius: 8px;
-    min-width: 55px;
   }
-
-  .avatar {
+  .player .avatar {
     width: 40px;
     height: 40px;
     font-size: 12px;
   }
 
+  .centerHUD {
+    width: 280px;
+    height: 280px;
+  }
+  .chip {
+    width: 30px;
+    height: 30px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
   .btn {
     padding: 6px 8px;
     font-size: 12px;
     width: 100%;
   }
-
   .kpi {
     flex-direction: column;
     gap: 6px;
   }
-
   .actions {
     flex-direction: column;
     gap: 6px;
   }
-
   .badge {
     font-size: 11px;
     padding: 4px 6px;
@@ -445,8 +405,66 @@ select {
     padding: 20px 30px;
     font-size: 20px;
   }
-
   .modal .icon {
     font-size: 40px;
+  }
+}
+
+/* 📊 Tabla de jugadores por misión (única, sin duplicados) */
+.mission-table {
+  margin-top: 14px;
+  padding: 8px;
+  background: #20223a;
+  border: 1px solid #343654;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+  overflow-x: auto;
+}
+.mission-table h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #f8f8f8;
+  text-align: center;
+}
+.mission-table table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+  font-size: 13px;
+}
+.mission-table th {
+  background: #111323;
+  color: #fff;
+  padding: 6px;
+  border: 1px solid #343654;
+}
+.mission-table td {
+  padding: 6px;
+  border: 1px solid #343654;
+  color: #e3e6ff;
+}
+.mission-table .highlight-row {
+  background-color: rgba(78, 107, 255, 0.2);
+}
+.mission-table .current-mission {
+  background-color: rgba(248, 210, 106, 0.3);
+  font-weight: bold;
+  color: #f8d26a;
+}
+@media (max-width: 768px) {
+  .mission-table {
+    font-size: 12px;
+    padding: 6px;
+  }
+  .mission-table table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .mission-table th,
+  .mission-table td {
+    padding: 5px 8px;
+    font-size: 12px;
   }
 }

@@ -12,6 +12,7 @@ export default function App() {
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState("");
   const [assassinCount, setAssassinCount] = useState(2);
+  const [maxPlayers, setMaxPlayers] = useState(4); // NUEVO: máximo de jugadores
 
   // Estado del servidor
   const [state, setState] = useState({
@@ -25,17 +26,26 @@ export default function App() {
     teamVotes: [],
     missionVotes: [],
     players: [],
+    maxPlayers: 5,
   });
 
   const [myRole, setMyRole] = useState(null);
   const [showMissionResult, setShowMissionResult] = useState(false);
   const [lastMissionResult, setLastMissionResult] = useState(null);
   const [prevResultsLength, setPrevResultsLength] = useState(0);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 480);
 
-  // Sonido de inicio de votación
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 480);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Sonido inicio votación
   useEffect(() => {
     socket.on("teamVoteStart", () => {
       const sound = new Audio("/sounds/notify.mp3");
+      sound.volume = 0.7;
       sound.play().catch(() => {});
     });
   }, []);
@@ -64,6 +74,7 @@ export default function App() {
         const sound = new Audio(
           last.winner === "Buenos" ? "/sounds/success.mp3" : "/sounds/fail.mp3"
         );
+        sound.volume = 0.7;
         sound.play().catch(() => {});
 
         setTimeout(() => {
@@ -85,6 +96,7 @@ export default function App() {
     socket.emit("startGame", {
       room,
       assassinCount: Number(assassinCount || 1),
+      maxPlayers,
     });
 
   // Selección de equipo
@@ -113,6 +125,7 @@ export default function App() {
 
   // Tamaño requerido según reglas
   const missionTeamSizes = {
+    4: [2, 2, 2, 3, 3],
     5: [2, 3, 2, 3, 3],
     6: [2, 3, 4, 3, 4],
     7: [2, 3, 3, 4, 4],
@@ -120,8 +133,11 @@ export default function App() {
     9: [3, 4, 4, 5, 5],
     10: [3, 4, 4, 5, 5],
   };
+
   const requiredTeamSize =
-    missionTeamSizes[state.players.length]?.[state.round - 1] || 2;
+    missionTeamSizes[state.maxPlayers || state.players.length]?.[
+      state.round - 1
+    ] || 2;
 
   // Posicionar jugadores en círculo
   const circlePlayers = useMemo(() => {
@@ -154,7 +170,6 @@ export default function App() {
           </div>
         </div>
       )}
-
       {/* Lobby */}
       {state.phase === "lobby" && (
         <div className="panel">
@@ -178,6 +193,15 @@ export default function App() {
               onChange={(e) => setRoom(e.target.value)}
               placeholder="Sala"
             />
+            <input
+              className="input"
+              type="number"
+              min="5"
+              max="10"
+              value={maxPlayers}
+              onChange={(e) => setMaxPlayers(Number(e.target.value))}
+              placeholder="Máx. jugadores"
+            />
             <button className="btn primary" onClick={join}>
               Unirme
             </button>
@@ -199,7 +223,9 @@ export default function App() {
             </button>
           </div>
 
-          <h3>Jugadores ({state.players.length})</h3>
+          <h3>
+            Jugadores ({state.players.length}/{state.maxPlayers})
+          </h3>
           <div className="row">
             {state.players.map((p) => (
               <span key={p.id} className="badge">
@@ -209,7 +235,6 @@ export default function App() {
           </div>
         </div>
       )}
-
       {/* Mesa */}
       {state.phase !== "lobby" && (
         <>
@@ -307,6 +332,7 @@ export default function App() {
                     <>
                       <span className="badge">
                         Debes elegir exactamente {requiredTeamSize} jugadores
+                        para esta misión
                       </span>
                       <button
                         className="btn primary"
@@ -412,6 +438,61 @@ export default function App() {
           </div>
         </>
       )}
+      {/* Tabla de jugadores por misión */}{" "}
+      <div className="mission-table">
+        {" "}
+        <h4>Jugadores por misión</h4>{" "}
+        <table>
+          {" "}
+          <thead>
+            {" "}
+            <tr>
+              {" "}
+              <th>Jugadores</th> <th>Misión 1</th> <th>Misión 2</th>{" "}
+              <th>Misión 3</th> <th>Misión 4</th> <th>Misión 5</th>{" "}
+            </tr>{" "}
+          </thead>{" "}
+          <tbody>
+            {" "}
+            {[4, 5, 6, 7, 8, 9, 10].map((count) => {
+              const row = {
+                4: [2, 2, 2, 3, 3],
+                5: [2, 3, 2, 3, 3],
+                6: [2, 3, 4, 3, 4],
+                7: [2, 3, 3, 4, 4],
+                8: [3, 4, 4, 5, 5],
+                9: [3, 4, 4, 5, 5],
+                10: [3, 4, 4, 5, 5],
+              }[count];
+              return (
+                <tr
+                  key={count}
+                  className={
+                    state.players.length === count ? "highlight-row" : ""
+                  }
+                >
+                  {" "}
+                  <td>{count}</td>{" "}
+                  {row.map((val, idx) => (
+                    <td
+                      key={idx}
+                      className={
+                        state.players.length === count &&
+                        state.round === idx + 1
+                          ? "current-mission"
+                          : ""
+                      }
+                    >
+                      {" "}
+                      {val}{" "}
+                    </td>
+                  ))}{" "}
+                </tr>
+              );
+            })}{" "}
+          </tbody>{" "}
+        </table>{" "}
+      </div>
     </div>
   );
 }
