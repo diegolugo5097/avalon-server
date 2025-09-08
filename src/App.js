@@ -13,6 +13,7 @@ export default function App() {
   const [avatar, setAvatar] = useState("");
   const [assassinCount, setAssassinCount] = useState(2);
   const [maxPlayers, setMaxPlayers] = useState(4); // NUEVO: máximo de jugadores
+  const [showGameOver, setShowGameOver] = useState(false);
 
   // Estado del servidor
   const [state, setState] = useState({
@@ -34,6 +35,7 @@ export default function App() {
   const [lastMissionResult, setLastMissionResult] = useState(null);
   const [prevResultsLength, setPrevResultsLength] = useState(0);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 480);
+  const [assassinIds, setAssassinIds] = useState([]);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 480);
@@ -51,6 +53,15 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    socket.on("assassinList", (ids) => {
+      setAssassinIds(ids || []);
+    });
+    return () => {
+      socket.off("assassinList");
+    };
+  }, []);
+
+  useEffect(() => {
     socket.on("connect", () => {});
     socket.on("state", (s) => setState(s));
     socket.on("yourRole", (role) => setMyRole(role));
@@ -62,6 +73,12 @@ export default function App() {
       socket.off("toast");
     };
   }, []);
+
+  useEffect(() => {
+    if (state.phase === "gameOver") {
+      setShowGameOver(true);
+    }
+  }, [state.phase]);
 
   // Modal resultado misión
   useEffect(() => {
@@ -242,59 +259,69 @@ export default function App() {
             <div className="tableDisk" />
 
             {/* Jugadores */}
-            {circlePlayers.map((p) => (
-              <div
-                key={p.id}
-                className={`player ${p.id === state.leaderId ? "leader" : ""}`}
-                style={{
-                  left: "50%",
-                  top: "50%",
-                  transform: `translate(-50%, -50%) rotate(${
-                    p.angle
-                  }deg) translateY(calc(-1 * var(--radius))) rotate(${-p.angle}deg)`,
-                }}
-              >
-                <div className="playerCard">
-                  <div className="avatar">
-                    {p.avatar
-                      ? p.avatar
-                      : (p.name || "?").slice(0, 2).toUpperCase()}
-                  </div>
+            {circlePlayers.map((p) => {
+              const isSelected = state.team.includes(p.id);
+              const iAmAssassin = myRole === "Asesino";
+              const isAssassinAlly = iAmAssassin && assassinIds.includes(p.id);
+
+              return (
+                <div
+                  key={p.id}
+                  className={`player ${
+                    p.id === state.leaderId ? "leader" : ""
+                  }`}
+                  style={{
+                    left: "50%",
+                    top: "50%",
+                    transform: `translate(-50%, -50%) rotate(${
+                      p.angle
+                    }deg) translateY(calc(-1 * var(--radius))) rotate(${-p.angle}deg)`,
+                  }}
+                >
                   <div
-                    style={{
-                      display: "flex",
-                      gap: 6,
-                      justifyContent: "center",
-                    }}
+                    className={`playerCard ${isSelected ? "selected" : ""} ${
+                      isAssassinAlly ? "assassin-ally" : ""
+                    }`}
                   >
-                    {p.id === state.leaderId && (
-                      <span className="crown">👑</span>
-                    )}
-                    <span
+                    <div className="avatar">
+                      {p.avatar
+                        ? p.avatar
+                        : (p.name || "?").slice(0, 2).toUpperCase()}
+                    </div>
+                    <div
                       style={{
-                        color: "#e3e6ff",
-                        fontWeight: 700,
-                        fontSize: 14,
+                        display: "flex",
+                        gap: 6,
+                        justifyContent: "center",
                       }}
                     >
-                      {p.name}
-                    </span>
-                  </div>
-                  {iAmLeader && state.phase === "teamSelection" && (
-                    <div style={{ marginTop: 6 }}>
-                      <button
-                        className={`btn ${
-                          state.team.includes(p.id) ? "evil" : "ghost"
-                        }`}
-                        onClick={() => toggleTeam(p.id)}
+                      {p.id === state.leaderId && (
+                        <span className="crown">👑</span>
+                      )}
+                      <span
+                        style={{
+                          color: "#e3e6ff",
+                          fontWeight: 700,
+                          fontSize: 14,
+                        }}
                       >
-                        {state.team.includes(p.id) ? "Quitar" : "Añadir"}
-                      </button>
+                        {p.name}
+                      </span>
                     </div>
-                  )}
+                    {iAmLeader && state.phase === "teamSelection" && (
+                      <div style={{ marginTop: 6 }}>
+                        <button
+                          className={`btn ${isSelected ? "evil" : "ghost"}`}
+                          onClick={() => toggleTeam(p.id)}
+                        >
+                          {isSelected ? "Quitar" : "Añadir"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             {/* HUD central */}
             <div className="centerHUD">
@@ -493,6 +520,41 @@ export default function App() {
           </tbody>{" "}
         </table>{" "}
       </div>
+      {showGameOver && (
+        <div className="modal-backdrop">
+          <div className="modal game-over">
+            <h2>🏆 ¡Partida Finalizada!</h2>
+            <h3>
+              Ganador:{" "}
+              <span
+                style={{ color: state.goodWins >= 3 ? "#4caf50" : "#f44336" }}
+              >
+                {state.goodWins >= 3 ? "Buenos ⚔️" : "Asesinos 🥷"}
+              </span>
+            </h3>
+
+            <div className="roles-list">
+              <h4>Asesinos 🥷</h4>
+              <ul>
+                {state.players
+                  .filter((p) => state.roles?.[p.id] === "Asesino")
+                  .map((p) => (
+                    <li key={p.id} style={{ color: "red" }}>
+                      {p.name}
+                    </li>
+                  ))}
+              </ul>
+            </div>
+
+            <button
+              className="btn primary"
+              onClick={() => window.location.reload()}
+            >
+              🔄 Reiniciar Partida
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
