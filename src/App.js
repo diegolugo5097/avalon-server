@@ -183,6 +183,8 @@ export default function App() {
           >
             <div className="icon">
               <img
+                width={200}
+                height={200}
                 src={`${
                   lastMissionResult === "success"
                     ? "/avatars/agentsWin.PNG"
