@@ -7,14 +7,11 @@
   --evil: #f44336;
   --muted: #a9a9c1;
 
-  /* 📐 Tamaños fluidos para la mesa */
-  --table: clamp(320px, 85vw, 720px); /* tamaño del wrapper */
-  --disk: calc(var(--table) - 160px); /* tamaño del disco central */
-  --radius: calc(
-    var(--table) / 2 - 20px
-  ); /* radio donde orbitan las tarjetas */
+  /* Mesa dinámica y responsive */
+  --table: clamp(320px, 85vw, 720px);
+  --disk: calc(var(--table) - 160px);
+  --radius: calc(var(--table) / 2 - 20px); /* 👈 radio de órbita */
 }
-
 /* Reset */
 * {
   box-sizing: border-box;
@@ -120,9 +117,9 @@ select {
   position: absolute;
   width: 110px;
   text-align: center;
-  /* el “brazo” donde rota la tarjeta depende del radio calculado */
-  transform-origin: 50% var(--radius);
+  transform-origin: 50% 50%; /* 👈 centro real de la carta */
 }
+
 .playerCard {
   background: #20223a;
   border: 1px solid #343654;
@@ -466,5 +463,66 @@ select {
   .mission-table td {
     padding: 5px 8px;
     font-size: 12px;
+  }
+}
+/* Tablets */
+@media (max-width: 768px) {
+  :root {
+    --table: clamp(240px, 80vw, 520px);
+    --disk: calc(var(--table) - 120px);
+  }
+
+  .player {
+    width: 80px;
+  }
+
+  .playerCard {
+    padding: 6px;
+    min-width: 70px;
+    max-width: 90px;
+  }
+
+  .player .avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 14px;
+  }
+
+  .centerHUD {
+    width: min(240px, 55%);
+    height: min(240px, 55%);
+  }
+}
+
+/* Móviles */
+@media (max-width: 480px) {
+  :root {
+    --table: clamp(260px, 95vw, 380px);
+    --disk: calc(var(--table) - 100px);
+    --radius: calc(
+      var(--table) / 2 - 14px
+    ); /* un pelo menos para no pegarse al borde */
+  }
+
+  .player {
+    width: 70px;
+  }
+
+  .playerCard {
+    padding: 4px;
+    min-width: 60px;
+    max-width: 75px;
+    border-radius: 8px;
+  }
+
+  .player .avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  .centerHUD {
+    width: min(200px, 60%);
+    height: min(200px, 60%);
   }
 }
