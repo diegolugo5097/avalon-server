@@ -14,6 +14,11 @@ export default function App() {
   const [assassinCount, setAssassinCount] = useState(2);
   const [maxPlayers, setMaxPlayers] = useState(4); // NUEVO: máximo de jugadores
   const [showGameOver, setShowGameOver] = useState(false);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const avatarList = Array.from(
+    { length: 11 },
+    (_, i) => `/avatars/avatar${i + 1}.JPG`
+  );
 
   // Estado del servidor
   const [state, setState] = useState({
@@ -177,7 +182,13 @@ export default function App() {
             }`}
           >
             <div className="icon">
-              {lastMissionResult === "success" ? "✅" : "❌"}
+              <img
+                src={`${
+                  lastMissionResult === "success"
+                    ? "/avatars/agentsWin.PNG"
+                    : "/avatars/assasinsWin.PNG"
+                }`}
+              />
             </div>
             <h2>
               {lastMissionResult === "success"
@@ -198,12 +209,21 @@ export default function App() {
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
-            <input
-              className="input"
-              placeholder="Avatar (emoji opcional)"
-              value={avatar}
-              onChange={(e) => setAvatar(e.target.value)}
-            />
+            <div className="row">
+              <div className="avatar-selector">
+                {avatar ? (
+                  <img src={avatar} alt="avatar" className="selected-avatar" />
+                ) : (
+                  <span className="selected-avatar"></span>
+                )}
+                <button
+                  className="btn ghost"
+                  onClick={() => setShowAvatarModal(true)}
+                >
+                  Elegir Avatar
+                </button>
+              </div>
+            </div>
             <input
               className="input"
               value={room}
@@ -284,9 +304,20 @@ export default function App() {
                     }`}
                   >
                     <div className="avatar">
-                      {p.avatar
-                        ? p.avatar
-                        : (p.name || "?").slice(0, 2).toUpperCase()}
+                      {p.avatar && p.avatar.startsWith("/avatars/") ? (
+                        <img
+                          src={p.avatar}
+                          alt="avatar"
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            borderRadius: "50%",
+                            objectFit: "cover",
+                          }}
+                        />
+                      ) : (
+                        (p.name || "?").slice(0, 2).toUpperCase()
+                      )}
                     </div>
                     <div
                       style={{
@@ -551,6 +582,38 @@ export default function App() {
               onClick={() => window.location.reload()}
             >
               🔄 Reiniciar Partida
+            </button>
+          </div>
+        </div>
+      )}
+      {showAvatarModal && (
+        <div
+          className="modal-backdrop"
+          onClick={() => setShowAvatarModal(false)}
+        >
+          <div className="avatar-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Elige tu Avatar</h3>
+            <div className="avatar-grid">
+              {avatarList.map((img, idx) => (
+                <img
+                  key={idx}
+                  src={img}
+                  alt={`avatar-${idx}`}
+                  className={`avatar-option ${
+                    avatar === img ? "selected" : ""
+                  }`}
+                  onClick={() => {
+                    setAvatar(img);
+                    setShowAvatarModal(false);
+                  }}
+                />
+              ))}
+            </div>
+            <button
+              className="btn primary"
+              onClick={() => setShowAvatarModal(false)}
+            >
+              Cerrar
             </button>
           </div>
         </div>
