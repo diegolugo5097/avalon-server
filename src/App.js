@@ -249,10 +249,6 @@ export default function App() {
                 style={{
                   left: "50%",
                   top: "50%",
-                  // 1) centramos la tarjeta en el centro exacto de la mesa
-                  // 2) rotamos
-                  // 3) nos alejamos del centro el radio (negativo para salir hacia afuera)
-                  // 4) "des-rotamos" para que el contenido quede derecho
                   transform: `translate(-50%, -50%) rotate(${
                     p.angle
                   }deg) translateY(calc(-1 * var(--radius))) rotate(${-p.angle}deg)`,
