@@ -40,7 +40,6 @@ export default function App() {
   const [lastMissionResult, setLastMissionResult] = useState(null);
   const [prevResultsLength, setPrevResultsLength] = useState(0);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 480);
-  const [assassinIds, setAssassinIds] = useState([]);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 480);
@@ -55,15 +54,6 @@ export default function App() {
       sound.volume = 0.7;
       sound.play().catch(() => {});
     });
-  }, []);
-
-  useEffect(() => {
-    socket.on("assassinList", (ids) => {
-      setAssassinIds(ids || []);
-    });
-    return () => {
-      socket.off("assassinList");
-    };
   }, []);
 
   useEffect(() => {
@@ -110,6 +100,7 @@ export default function App() {
   // Unirse al lobby
   const join = () => {
     if (!name) return alert("Escribe un nombre");
+    // Notar: ya no enviamos ni usamos assassinList aquí
     socket.emit("joinRoom", { name, room, avatar });
   };
 
@@ -190,6 +181,7 @@ export default function App() {
                     ? "/avatars/agentsWin.PNG"
                     : "/avatars/assasinsWin.PNG"
                 }`}
+                alt=""
               />
             </div>
             <h2>
@@ -200,6 +192,7 @@ export default function App() {
           </div>
         </div>
       )}
+
       {/* Lobby */}
       {state.phase === "lobby" && (
         <div className="panel">
@@ -274,6 +267,7 @@ export default function App() {
           </div>
         </div>
       )}
+
       {/* Mesa */}
       {state.phase !== "lobby" && (
         <>
@@ -283,8 +277,6 @@ export default function App() {
             {/* Jugadores */}
             {circlePlayers.map((p) => {
               const isSelected = state.team.includes(p.id);
-              const iAmAssassin = myRole === "Asesino";
-              const isAssassinAlly = iAmAssassin && assassinIds.includes(p.id);
 
               return (
                 <div
@@ -300,11 +292,7 @@ export default function App() {
                     }deg) translateY(calc(-1 * var(--radius))) rotate(${-p.angle}deg)`,
                   }}
                 >
-                  <div
-                    className={`playerCard ${isSelected ? "selected" : ""} ${
-                      isAssassinAlly ? "assassin-ally" : ""
-                    }`}
-                  >
+                  <div className={`playerCard ${isSelected ? "selected" : ""}`}>
                     <div className="avatar">
                       {p.avatar && p.avatar.startsWith("/avatars/") ? (
                         <img
@@ -498,22 +486,22 @@ export default function App() {
           </div>
         </>
       )}
-      {/* Tabla de jugadores por misión */}{" "}
+
+      {/* Tabla de jugadores por misión */}
       <div className="mission-table">
-        {" "}
-        <h4>Jugadores por misión</h4>{" "}
+        <h4>Jugadores por misión</h4>
         <table>
-          {" "}
           <thead>
-            {" "}
             <tr>
-              {" "}
-              <th>Jugadores</th> <th>Misión 1</th> <th>Misión 2</th>{" "}
-              <th>Misión 3</th> <th>Misión 4</th> <th>Misión 5</th>{" "}
-            </tr>{" "}
-          </thead>{" "}
+              <th>Jugadores</th>
+              <th>Misión 1</th>
+              <th>Misión 2</th>
+              <th>Misión 3</th>
+              <th>Misión 4</th>
+              <th>Misión 5</th>
+            </tr>
+          </thead>
           <tbody>
-            {" "}
             {[4, 5, 6, 7, 8, 9, 10].map((count) => {
               const row = {
                 4: [2, 2, 2, 3, 3],
@@ -531,8 +519,7 @@ export default function App() {
                     state.players.length === count ? "highlight-row" : ""
                   }
                 >
-                  {" "}
-                  <td>{count}</td>{" "}
+                  <td>{count}</td>
                   {row.map((val, idx) => (
                     <td
                       key={idx}
@@ -543,16 +530,17 @@ export default function App() {
                           : ""
                       }
                     >
-                      {" "}
-                      {val}{" "}
+                      {val}
                     </td>
-                  ))}{" "}
+                  ))}
                 </tr>
               );
-            })}{" "}
-          </tbody>{" "}
-        </table>{" "}
+            })}
+          </tbody>
+        </table>
       </div>
+
+      {/* Modal de fin de partida */}
       {showGameOver && (
         <div className="modal-backdrop">
           <div className="modal game-over">
@@ -569,13 +557,14 @@ export default function App() {
             <div className="roles-list">
               <h4>Asesinos 🥷</h4>
               <ul>
-                {state.players
-                  .filter((p) => state.roles?.[p.id] === "Asesino")
-                  .map((p) => (
-                    <li key={p.id} style={{ color: "red" }}>
-                      {p.name}
-                    </li>
-                  ))}
+                {(state.roles
+                  ? state.players.filter((p) => state.roles[p.id] === "Asesino")
+                  : []
+                ).map((p) => (
+                  <li key={p.id} style={{ color: "red" }}>
+                    {p.name}
+                  </li>
+                ))}
               </ul>
             </div>
 
@@ -588,6 +577,8 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Modal de avatares */}
       {showAvatarModal && (
         <div
           className="modal-backdrop"
