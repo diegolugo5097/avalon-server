@@ -1,17 +1,19 @@
 :root {
-  --bg: #1e1e2f;
-  --panel: #2a2a40;
-  --ring: #3c3c55;
-  --accent: #f8d26a;
-  --good: #4caf50;
-  --evil: #f44336;
-  --muted: #a9a9c1;
+  /* 🎨 Paleta medieval */
+  --bg: #0f0b07; /* fondo carbón-marrón */
+  --panel: #1c1510; /* cuero oscuro */
+  --ring: #8b6a3e; /* bronce */
+  --accent: #d7b56d; /* oro viejo */
+  --good: #2f6f3e; /* verde bosque */
+  --evil: #8c1c13; /* carmesí profundo */
+  --muted: #cdbf9e; /* pergamino suave */
 
   /* Mesa dinámica y responsive */
   --table: clamp(320px, 85vw, 720px);
   --disk: calc(var(--table) - 160px);
   --radius: calc(var(--table) / 2 - 20px); /* 👈 radio de órbita */
 }
+
 /* Reset */
 * {
   box-sizing: border-box;
@@ -23,8 +25,10 @@ body,
 }
 body {
   margin: 0;
-  background: var(--bg);
-  color: #fff;
+  /* Fondo pergamino oscuro con viñeteado radial */
+  background: radial-gradient(1200px 800px at 20% 10%, #17110c 0%, #0f0b07 55%)
+    fixed;
+  color: #f1e7c6;
   font-family: system-ui, Arial, sans-serif;
 }
 
@@ -42,9 +46,9 @@ body {
 }
 .input,
 select {
-  background: #111323;
-  color: #fff;
-  border: 1px solid #343654;
+  background: #120e0b;
+  color: #f1e7c6;
+  border: 1px solid #3a2b1f;
   border-radius: 8px;
   padding: 10px 12px;
 }
@@ -60,32 +64,39 @@ select {
   transform: scale(1.05);
 }
 .btn:focus-visible {
-  outline: 2px solid #8ea1ff;
+  outline: 2px solid #d7c78e;
   outline-offset: 2px;
 }
 .btn.primary {
-  background: #4e6bff;
-  color: #fff;
+  background: #b68c2d; /* oro tostado */
+  color: #1b140e;
+}
+.btn.primary:hover {
+  box-shadow: 0 0 0 3px rgba(215, 181, 109, 0.18) inset;
 }
 .btn.good {
   background: var(--good);
-  color: #fff;
+  color: #e9f7eb;
 }
 .btn.evil {
   background: var(--evil);
-  color: #fff;
+  color: #ffe7e5;
+}
+.btn.evil:hover {
+  filter: brightness(1.05);
 }
 .btn.ghost {
   background: #0000;
-  border: 1px solid #4e6bff;
-  color: #cfd6ff;
+  border: 1px solid var(--accent);
+  color: #f1e7c6;
 }
 .panel {
   background: var(--panel);
-  border: 1px solid #3b3d5c;
+  border: 1px solid #3a2b1f;
   border-radius: 16px;
   padding: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px rgba(215, 181, 109, 0.06);
 }
 
 /* 🟢 Mesa circular fluida (menos media queries, mismos resultados) */
@@ -102,13 +113,14 @@ select {
   width: var(--disk);
   height: var(--disk);
   border-radius: 50%;
+  /* Madera con aro de bronce */
   background: radial-gradient(
     ellipse at center,
-    #2b2b3f 0%,
-    #232336 60%,
-    #1b1b2a 100%
+    #6b4226 0%,
+    #4a2d1b 60%,
+    #2f1e12 100%
   );
-  border: 12px solid #2c2c3c;
+  border: 12px solid #5a3c24;
   outline: 6px solid var(--ring);
 }
 
@@ -121,14 +133,14 @@ select {
 }
 
 .playerCard {
-  background: #20223a;
-  border: 1px solid #343654;
+  background: #221810;
+  border: 1px solid #3a2b1f;
   border-radius: 14px;
   padding: 8px;
   display: inline-block;
   min-width: 90px;
   max-width: 120px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
   transition: transform 0.2s ease;
 }
 .playerCard:hover {
@@ -138,18 +150,18 @@ select {
   width: 58px;
   height: 58px;
   border-radius: 50%;
-  background: #0f1124;
-  border: 3px solid #4e4f6d;
+  background: #100c09;
+  border: 3px solid #3e2f22;
   margin: 0 auto 6px;
   display: grid;
   place-items: center;
   font-weight: 800;
   font-size: 18px;
-  color: #ddd;
+  color: #eaddc1;
 }
 .player.leader .avatar {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(248, 210, 106, 0.2);
+  box-shadow: 0 0 0 3px rgba(215, 181, 109, 0.22);
 }
 .player.leader .crown {
   color: var(--accent);
@@ -180,29 +192,30 @@ select {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border: 2px solid #373955;
+  border: 2px solid rgba(94, 71, 41, 0.6);
   display: grid;
   place-items: center;
   font-size: 18px;
   transition: all 0.3s ease;
+  color: #f1e7c6;
 }
 .chip.good {
-  background: rgba(76, 175, 80, 0.15);
-  color: #b6ffbe;
-  border-color: rgba(76, 175, 80, 0.55);
+  background: rgba(47, 111, 62, 0.18);
+  color: #d6f5d9;
+  border-color: rgba(47, 111, 62, 0.6);
   animation: pulseGreen 0.4s ease;
 }
 .chip.evil {
-  background: rgba(244, 67, 54, 0.15);
-  color: #ffb3ae;
-  border-color: rgba(244, 67, 54, 0.55);
+  background: rgba(140, 28, 19, 0.18);
+  color: #f3c0bc;
+  border-color: rgba(140, 28, 19, 0.6);
   animation: pulseRed 0.4s ease;
 }
 .kpi {
   display: flex;
   gap: 10px;
   align-items: center;
-  color: #cfd1ff;
+  color: #f1e7c6;
   flex-wrap: wrap;
   justify-content: center;
 }
@@ -219,9 +232,9 @@ select {
   padding: 6px 10px;
   border-radius: 999px;
   font-size: 12px;
-  background: #101226;
-  color: #d5d7ff;
-  border: 1px solid #33365b;
+  background: #15100c;
+  color: #f1e7c6;
+  border: 1px solid #5e4729;
 }
 
 /* 🪄 Utilidad para truncar (opcional: añade className="truncate" al nombre) */
@@ -240,7 +253,7 @@ select {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.7);
+  /* si quieres oscurecer: background: rgba(0,0,0,0.7); */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -254,16 +267,11 @@ select {
   font-weight: bold;
   text-align: center;
   color: #fff;
-  box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
   animation: zoomIn 0.4s ease;
 }
 .modal.success {
-  background: #2ecc71;
-  border: 5px solid #27ae60;
 }
 .modal.fail {
-  background: #e74c3c;
-  border: 5px solid #c0392b;
 }
 .modal .icon {
   font-size: 60px;
@@ -303,18 +311,18 @@ select {
 }
 @keyframes pulseGreen {
   from {
-    box-shadow: 0 0 4px #27ae60;
+    box-shadow: 0 0 4px #1f3f2a;
   }
   to {
-    box-shadow: 0 0 12px #2ecc71;
+    box-shadow: 0 0 12px #285136;
   }
 }
 @keyframes pulseRed {
   from {
-    box-shadow: 0 0 4px #c0392b;
+    box-shadow: 0 0 4px #420f0b;
   }
   to {
-    box-shadow: 0 0 12px #e74c3c;
+    box-shadow: 0 0 12px #5a1712;
   }
 }
 
@@ -411,8 +419,8 @@ select {
 .mission-table {
   margin-top: 14px;
   padding: 8px;
-  background: #20223a;
-  border: 1px solid #343654;
+  background: #221810;
+  border: 1px solid #3a2b1f;
   border-radius: 10px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
   overflow-x: auto;
@@ -421,7 +429,7 @@ select {
   margin: 0 0 8px;
   font-size: 14px;
   font-weight: bold;
-  color: #f8f8f8;
+  color: #f1e7c6;
   text-align: center;
 }
 .mission-table table {
@@ -431,23 +439,23 @@ select {
   font-size: 13px;
 }
 .mission-table th {
-  background: #111323;
-  color: #fff;
+  background: #16100c;
+  color: #f1e7c6;
   padding: 6px;
-  border: 1px solid #343654;
+  border: 1px solid #3a2b1f;
 }
 .mission-table td {
   padding: 6px;
-  border: 1px solid #343654;
-  color: #e3e6ff;
+  border: 1px solid #3a2b1f;
+  color: #f1e7c6;
 }
 .mission-table .highlight-row {
-  background-color: rgba(78, 107, 255, 0.2);
+  background-color: rgba(182, 140, 45, 0.16);
 }
 .mission-table .current-mission {
-  background-color: rgba(248, 210, 106, 0.3);
+  background-color: rgba(215, 181, 109, 0.25);
   font-weight: bold;
-  color: #f8d26a;
+  color: var(--accent);
 }
 @media (max-width: 768px) {
   .mission-table {
@@ -529,30 +537,31 @@ select {
 
 /* Cuando un jugador es añadido al equipo */
 .playerCard.selected {
-  border: 2px solid #4caf50; /* Verde */
-  box-shadow: 0 0 12px rgba(76, 175, 80, 0.7);
+  border: 2px solid var(--accent); /* Dorado */
+  box-shadow: 0 0 12px rgba(215, 181, 109, 0.65);
   transform: scale(1.05);
   transition: all 0.3s ease;
 }
 
 /* Para que no se deforme el botón */
 .playerCard.selected .btn {
-  border-color: #4caf50;
+  border-color: var(--accent);
 }
 
+/* 🔕 Neutralizamos el resaltado de asesinos por si la clase aparece */
 .playerCard.assassin-ally {
-  border: 2px solid #ff3b3b;
-  box-shadow: 0 0 15px rgba(255, 59, 59, 0.8);
+  border: 1px solid #3a2b1f;
+  box-shadow: none;
   transition: all 0.3s ease;
 }
 
 .modal.game-over {
-  background: #20223a;
-  border: 3px solid #4e6bff;
+  background: #221810;
+  border: 3px solid var(--ring);
   padding: 24px;
   border-radius: 16px;
   text-align: center;
-  color: #fff;
+  color: #f1e7c6;
   width: 300px;
   max-width: 90%;
   animation: zoomIn 0.4s ease;
@@ -565,7 +574,7 @@ select {
 
 .roles-list h4 {
   margin: 8px 0;
-  color: #f8d26a;
+  color: var(--accent);
 }
 
 .roles-list ul {
@@ -589,8 +598,8 @@ select {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: #111323;
-  border: 2px solid #4e6bff;
+  background: #120e0b;
+  border: 2px solid var(--accent);
   display: grid;
   place-items: center;
   font-size: 20px;
@@ -626,7 +635,7 @@ select {
 
 .avatar-option:hover {
   transform: scale(1.1);
-  border-color: #4e6bff;
+  border-color: var(--accent);
 }
 
 .avatar-option.selected {
@@ -638,16 +647,16 @@ select {
   width: 58px;
   height: 58px;
   border-radius: 50%;
-  background: #0f1124;
-  border: 3px solid #4e4f6d;
+  background: #100c09;
+  border: 3px solid #3e2f22;
   margin: 0 auto 6px;
   display: flex;
   justify-content: center;
   align-items: center;
   font-weight: 800;
   font-size: 18px;
-  color: #ddd;
-  overflow: hidden; /* 🔹 Aquí forzamos que la imagen no se salga */
+  color: #eaddc1;
+  overflow: hidden; /* 🔹 Forzamos que la imagen no se salga */
   position: relative;
 }
 

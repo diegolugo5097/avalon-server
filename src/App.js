@@ -7,12 +7,17 @@ const socket = io("https://avalon-serve.onrender.com", {
 });
 
 export default function App() {
+  // Código de sala
+  const [roomCode, setRoomCode] = useState("");
+
   // Lobby
-  const [room, setRoom] = useState("sala-1");
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState("");
   const [assassinCount, setAssassinCount] = useState(2);
-  const [maxPlayers, setMaxPlayers] = useState(4); // NUEVO: máximo de jugadores
+  const [maxPlayers, setMaxPlayers] = useState(4);
+  const [isCreator, setIsCreator] = useState(false);
+
+  // UI
   const [showGameOver, setShowGameOver] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const avatarList = Array.from(
@@ -32,105 +37,222 @@ export default function App() {
     teamVotes: [],
     missionVotes: [],
     players: [],
-    maxPlayers: 5,
+    maxPlayers: 4,
+    roles: undefined, // el server lo envía solo en gameOver
   });
 
+  // Rol y modal de misión
   const [myRole, setMyRole] = useState(null);
   const [showMissionResult, setShowMissionResult] = useState(false);
-  const [lastMissionResult, setLastMissionResult] = useState(null);
-  const [prevResultsLength, setPrevResultsLength] = useState(0);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 480);
+  const [lastMissionResult, setLastMissionResult] = useState(null); // "success" | "fail"
+  const [missionCounts, setMissionCounts] = useState({ success: 0, fail: 0 });
 
+  /* ======================
+     Persistencia en localStorage
+     ====================== */
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 480);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    setName(localStorage.getItem("avalon_name") || "");
+    setAvatar(localStorage.getItem("avalon_avatar") || "");
+    setRoomCode(localStorage.getItem("avalon_roomCode") || "");
+    setIsCreator(localStorage.getItem("avalon_isCreator") === "1");
+    const ac = localStorage.getItem("avalon_assassinCount");
+    const mp = localStorage.getItem("avalon_maxPlayers");
+    if (ac) setAssassinCount(Number(ac));
+    if (mp) setMaxPlayers(Number(mp));
   }, []);
 
-  // Sonido inicio votación
+  useEffect(() => localStorage.setItem("avalon_name", name), [name]);
+  useEffect(() => localStorage.setItem("avalon_avatar", avatar), [avatar]);
+  useEffect(
+    () => localStorage.setItem("avalon_roomCode", roomCode),
+    [roomCode]
+  );
+  useEffect(
+    () => localStorage.setItem("avalon_assassinCount", String(assassinCount)),
+    [assassinCount]
+  );
+  useEffect(
+    () => localStorage.setItem("avalon_maxPlayers", String(maxPlayers)),
+    [maxPlayers]
+  );
   useEffect(() => {
-    socket.on("teamVoteStart", () => {
+    localStorage.setItem("avalon_isCreator", isCreator ? "1" : "0");
+  }, [isCreator]);
+
+  // Restaurar rol guardado por sala cuando cambia roomCode
+  useEffect(() => {
+    if (!roomCode) {
+      const legacy = localStorage.getItem("avalon_role");
+      if (legacy) setMyRole(legacy);
+      return;
+    }
+    const saved = localStorage.getItem(`avalon_role_${roomCode}`);
+    if (saved) setMyRole(saved);
+  }, [roomCode]);
+
+  // Guardar rol por sala cuando cambie
+  useEffect(() => {
+    const key = roomCode ? `avalon_role_${roomCode}` : "avalon_role";
+    if (myRole) {
+      localStorage.setItem(key, myRole);
+    } else {
+      localStorage.removeItem(key);
+    }
+  }, [myRole, roomCode]);
+
+  /* ======================
+     Reconexión y auto-join
+     ====================== */
+  useEffect(() => {
+    const onConnect = () => {
+      const lastSid = localStorage.getItem("avalon_sid");
+      if (lastSid) localStorage.setItem("avalon_prevSid", lastSid);
+      localStorage.setItem("avalon_sid", socket.id);
+
+      // Auto-rejoin si hay datos guardados y estamos en lobby
+      const savedName = localStorage.getItem("avalon_name");
+      const savedCode = localStorage.getItem("avalon_roomCode");
+      const savedAvatar = localStorage.getItem("avalon_avatar");
+      const prevId = localStorage.getItem("avalon_prevSid");
+      if (savedName && savedCode && state.phase === "lobby") {
+        socket.emit("joinRoom", {
+          name: savedName,
+          roomCode: savedCode.toUpperCase(),
+          avatar: savedAvatar || "",
+          prevId,
+        });
+      }
+    };
+    socket.on("connect", onConnect);
+    return () => socket.off("connect", onConnect);
+  }, [state.phase]);
+
+  /* ======================
+     Listeners de UI / juego
+     ====================== */
+  useEffect(() => {
+    const onTeamVoteStart = () => {
       const sound = new Audio("/sounds/notify.mp3");
       sound.volume = 0.7;
       sound.play().catch(() => {});
-    });
+    };
+    socket.on("teamVoteStart", onTeamVoteStart);
+    return () => socket.off("teamVoteStart", onTeamVoteStart);
   }, []);
 
   useEffect(() => {
-    socket.on("connect", () => {});
-    socket.on("state", (s) => setState(s));
-    socket.on("yourRole", (role) => setMyRole(role));
-    socket.on("toast", ({ msg }) => alert(msg));
+    const onState = (s) => setState(s);
+    const onRole = (role) => setMyRole(role);
+    const onToast = ({ msg }) => alert(msg);
+
+    const onRoomCreated = ({ roomCode: rc }) => {
+      // Limpiar rol anterior (si existía en otra sala)
+      if (roomCode) localStorage.removeItem(`avalon_role_${roomCode}`);
+      setRoomCode(rc);
+      setMyRole(null); // se asignará cuando inicie la partida
+      setIsCreator(true);
+      localStorage.setItem("avalon_isCreator", "1");
+      alert(`Sala creada. Código: ${rc}`);
+    };
+
+    const onMissionResult = ({ winner, successVotes, failVotes }) => {
+      setLastMissionResult(winner === "Buenos" ? "success" : "fail");
+      setMissionCounts({
+        success: Number(successVotes) || 0,
+        fail: Number(failVotes) || 0,
+      });
+
+      const sound = new Audio(
+        winner === "Buenos" ? "/sounds/success.mp3" : "/sounds/fail.mp3"
+      );
+      sound.volume = 0.7;
+      sound.play().catch(() => {});
+      setShowMissionResult(true);
+      setTimeout(() => setShowMissionResult(false), 2500);
+    };
+
+    socket.on("state", onState);
+    socket.on("yourRole", onRole);
+    socket.on("toast", onToast);
+    socket.on("roomCreated", onRoomCreated);
+    socket.on("missionResult", onMissionResult);
 
     return () => {
-      socket.off("state");
-      socket.off("yourRole");
-      socket.off("toast");
+      socket.off("state", onState);
+      socket.off("yourRole", onRole);
+      socket.off("toast", onToast);
+      socket.off("roomCreated", onRoomCreated);
+      socket.off("missionResult", onMissionResult);
     };
-  }, []);
+  }, [roomCode]);
 
   useEffect(() => {
-    if (state.phase === "gameOver") {
-      setShowGameOver(true);
-    }
+    if (state.phase === "gameOver") setShowGameOver(true);
   }, [state.phase]);
 
-  // Modal resultado misión
-  useEffect(() => {
-    if (state.results.length > prevResultsLength) {
-      const last = state.results[state.results.length - 1];
-      if (last) {
-        setLastMissionResult(last.winner === "Buenos" ? "success" : "fail");
-        setShowMissionResult(true);
-
-        const sound = new Audio(
-          last.winner === "Buenos" ? "/sounds/success.mp3" : "/sounds/fail.mp3"
-        );
-        sound.volume = 0.7;
-        sound.play().catch(() => {});
-
-        setTimeout(() => {
-          setShowMissionResult(false);
-        }, 2500);
-      }
-      setPrevResultsLength(state.results.length);
-    }
-  }, [state.results, prevResultsLength]);
-
-  // Unirse al lobby
-  const join = () => {
+  /* ======================
+     Acciones
+     ====================== */
+  const create = () => {
     if (!name) return alert("Escribe un nombre");
-    // Notar: ya no enviamos ni usamos assassinList aquí
-    socket.emit("joinRoom", { name, room, avatar });
+    if (maxPlayers < 4 || maxPlayers > 10)
+      return alert("Máx. jugadores debe estar entre 4 y 10");
+    if (assassinCount < 1 || assassinCount >= maxPlayers)
+      return alert(
+        "Asesinos debe ser al menos 1 y menor que el total de jugadores"
+      );
+
+    socket.emit("createRoom", {
+      name,
+      avatar,
+      maxPlayers: Number(maxPlayers),
+      assassinCount: Number(assassinCount),
+    });
+    // el server responde con roomCreated → allí marcamos isCreator
   };
 
-  // Iniciar juego
+  const join = () => {
+    if (!name) return alert("Escribe un nombre");
+    if (!roomCode) return alert("Ingresa el código de la sala");
+    const prevId = localStorage.getItem("avalon_prevSid");
+    const code = (roomCode || "").toUpperCase();
+
+    // precarga rol guardado de esa sala (si existe) para evitar "?"
+    setMyRole(localStorage.getItem(`avalon_role_${code}`) || null);
+
+    setIsCreator(false);
+    localStorage.setItem("avalon_isCreator", "0");
+
+    socket.emit("joinRoom", {
+      name,
+      roomCode: code,
+      avatar,
+      prevId,
+    });
+  };
+
   const start = () =>
     socket.emit("startGame", {
-      room,
+      roomCode: roomCode || undefined,
       assassinCount: Number(assassinCount || 1),
       maxPlayers,
     });
 
-  // Selección de equipo
   const toggleTeam = (id) => {
     if (state.phase !== "teamSelection") return;
     if (state.leaderId !== socket.id) return;
     const next = state.team.includes(id)
       ? state.team.filter((x) => x !== id)
       : [...state.team, id];
-    socket.emit("draftTeam", { room, team: next });
+    socket.emit("draftTeam", { roomCode, team: next });
   };
 
   const confirmTeam = () => {
-    socket.emit("selectTeam", { room, team: state.team });
+    socket.emit("selectTeam", { roomCode, team: state.team });
   };
 
-  // Votar equipo
-  const voteTeam = (vote) => socket.emit("voteTeam", { room, vote });
-
-  // Votar misión
-  const voteMission = (vote) => socket.emit("voteMission", { room, vote });
+  const voteTeam = (vote) => socket.emit("voteTeam", { roomCode, vote });
+  const voteMission = (vote) => socket.emit("voteMission", { roomCode, vote });
 
   const iAmLeader = state.leaderId === socket.id;
   const gameOver =
@@ -146,7 +268,6 @@ export default function App() {
     9: [3, 4, 4, 5, 5],
     10: [3, 4, 4, 5, 5],
   };
-
   const requiredTeamSize =
     missionTeamSizes[state.maxPlayers || state.players.length]?.[
       state.round - 1
@@ -162,9 +283,12 @@ export default function App() {
     });
   }, [state.players]);
 
+  /* ======================
+     UI
+     ====================== */
   return (
     <div className="container">
-      {/* Modal resultado misión */}
+      {/* Modal resultado misión con conteo */}
       {showMissionResult && (
         <div className="modal-backdrop">
           <div
@@ -176,19 +300,22 @@ export default function App() {
               <img
                 width={200}
                 height={200}
-                src={`${
+                src={
                   lastMissionResult === "success"
                     ? "/avatars/agentsWin.PNG"
                     : "/avatars/assasinsWin.PNG"
-                }`}
+                }
                 alt=""
               />
             </div>
-            <h2>
-              {lastMissionResult === "success"
-                ? "¡Misión Exitosa!"
-                : "¡Misión Fallida!"}
-            </h2>
+
+            <div
+              className="row"
+              style={{ justifyContent: "center", marginTop: 6 }}
+            >
+              <span className="badge">Éxitos: {missionCounts.success}</span>
+              <span className="badge">Fracasos: {missionCounts.fail}</span>
+            </div>
           </div>
         </div>
       )}
@@ -197,6 +324,8 @@ export default function App() {
       {state.phase === "lobby" && (
         <div className="panel">
           <h2>Ávalon — Lobby</h2>
+
+          {/* Campos comunes */}
           <div className="row">
             <input
               className="input"
@@ -219,52 +348,90 @@ export default function App() {
                 </button>
               </div>
             </div>
-            <input
-              className="input"
-              value={room}
-              onChange={(e) => setRoom(e.target.value)}
-              placeholder="Sala"
-            />
+          </div>
+
+          {/* Crear sala */}
+          <h3>Crear una sala</h3>
+          <div className="row">
+            <label className="badge">Cant. Jugadores:</label>
             <input
               className="input"
               type="number"
-              min="5"
+              min="4"
               max="10"
               value={maxPlayers}
               onChange={(e) => setMaxPlayers(Number(e.target.value))}
               placeholder="Máx. jugadores"
             />
-            <button className="btn primary" onClick={join}>
-              Unirme
-            </button>
-          </div>
-
-          <div style={{ height: 8 }} />
-          <div className="row">
-            <label className="badge">Asesinos:</label>
+            <label className="badge">Cant. Asesinos:</label>
             <input
               className="input"
               type="number"
-              min={1}
-              max={Math.max(1, (state.players?.length || 2) - 1)}
+              min="1"
+              max={Math.max(1, maxPlayers - 1)}
               value={assassinCount}
-              onChange={(e) => setAssassinCount(e.target.value)}
+              onChange={(e) => setAssassinCount(Number(e.target.value))}
+              placeholder="Asesinos"
             />
-            <button className="btn good" onClick={start}>
-              Iniciar partida
+            <button className="btn good" onClick={create}>
+              Crear sala
             </button>
           </div>
 
-          <h3>
-            Jugadores ({state.players.length}/{state.maxPlayers})
-          </h3>
-          <div className="row">
-            {state.players.map((p) => (
-              <span key={p.id} className="badge">
-                {p.name}
-              </span>
-            ))}
-          </div>
+          {roomCode && (
+            <div className="row">
+              <span className="badge">Código de sala: {roomCode}</span>
+            </div>
+          )}
+
+          {/* Unirse a sala */}
+          {!isCreator && (
+            <>
+              <h3>Unirse a una sala</h3>
+              <div className="row">
+                <input
+                  className="input"
+                  placeholder="Código de sala (ej. ABC123)"
+                  value={roomCode}
+                  onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                />
+                <button className="btn primary" onClick={join}>
+                  Unirme
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Lista de jugadores y control de inicio */}
+          {state.players?.length > 0 && (
+            <>
+              <h3>
+                Jugadores ({state.players.length}/{state.maxPlayers})
+              </h3>
+              <div className="row">
+                {state.players.map((p) => (
+                  <span key={p.id} className="badge">
+                    {p.name}
+                  </span>
+                ))}
+              </div>
+
+              <div style={{ height: 8 }} />
+              <div className="row">
+                {isCreator ? (
+                  <>
+                    <button className="btn good" onClick={start}>
+                      Iniciar partida
+                    </button>
+                  </>
+                ) : (
+                  <span className="badge">
+                    Esperando a que el creador inicie…
+                  </span>
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -277,7 +444,6 @@ export default function App() {
             {/* Jugadores */}
             {circlePlayers.map((p) => {
               const isSelected = state.team.includes(p.id);
-
               return (
                 <div
                   key={p.id}
@@ -373,7 +539,6 @@ export default function App() {
                 })}
               </div>
 
-              {/* Fase de selección de equipo */}
               {state.phase === "teamSelection" && (
                 <div className="actions">
                   {iAmLeader ? (
@@ -397,7 +562,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* Fase de votación de equipo */}
               {state.phase === "teamVote" && (
                 <div className="actions">
                   <span className="badge">¿Apruebas este equipo?</span>
@@ -419,7 +583,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* Fase de votación de misión */}
               {state.phase === "missionVote" &&
                 state.team.includes(socket.id) && (
                   <div className="actions">
@@ -460,7 +623,7 @@ export default function App() {
             style={{ justifyContent: "space-between" }}
           >
             <div className="row">
-              <span className="badge">Sala: {room}</span>
+              <span className="badge">Código: {roomCode || "—"}</span>
               <span className="badge">
                 Líder:{" "}
                 {state.players.find((p) => p.id === state.leaderId)?.name ||
@@ -477,7 +640,12 @@ export default function App() {
               {gameOver && (
                 <button
                   className="btn primary"
-                  onClick={() => window.location.reload()}
+                  onClick={() => {
+                    // Limpia rol guardado de esta sala al reiniciar (opcional)
+                    if (roomCode)
+                      localStorage.removeItem(`avalon_role_${roomCode}`);
+                    window.location.reload();
+                  }}
                 >
                   Reiniciar
                 </button>
@@ -557,20 +725,28 @@ export default function App() {
             <div className="roles-list">
               <h4>Asesinos 🥷</h4>
               <ul>
-                {(state.roles
-                  ? state.players.filter((p) => state.roles[p.id] === "Asesino")
-                  : []
-                ).map((p) => (
-                  <li key={p.id} style={{ color: "red" }}>
-                    {p.name}
-                  </li>
-                ))}
+                {state.roles
+                  ? Object.entries(state.roles)
+                      .filter(([, role]) => role === "Asesino")
+                      .map(([id]) => {
+                        const p = state.players.find((x) => x.id === id);
+                        return (
+                          <li key={id} style={{ color: "red" }}>
+                            {p?.name || id}
+                          </li>
+                        );
+                      })
+                  : null}
               </ul>
             </div>
 
             <button
               className="btn primary"
-              onClick={() => window.location.reload()}
+              onClick={() => {
+                if (roomCode)
+                  localStorage.removeItem(`avalon_role_${roomCode}`);
+                window.location.reload();
+              }}
             >
               🔄 Reiniciar Partida
             </button>
